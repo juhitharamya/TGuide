@@ -1,6 +1,15 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Reads from frontend/.env → EXPO_PUBLIC_API_URL
+// Fallback: localhost for web, LAN IP for mobile
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Platform.OS === 'web'
+    ? 'http://localhost:8000/api'
+    : 'http://192.168.1.25:8000/api');
+
+console.log('[TGuide] API URL:', API_BASE_URL);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

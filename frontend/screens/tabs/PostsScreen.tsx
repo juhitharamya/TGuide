@@ -38,7 +38,7 @@ export default function PostsScreen() {
   };
 
   const handleCreatePost = () => {
-    router.push('/create-post');
+    router.push('/state/create-post');
   };
 
   const submitComment = () => {

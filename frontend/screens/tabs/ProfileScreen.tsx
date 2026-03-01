@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const handleEditProfile = () => {
-    router.push('/edit-profile');
+    router.push('/state/edit-profile');
   };
 
   const handleLogout = () => {
