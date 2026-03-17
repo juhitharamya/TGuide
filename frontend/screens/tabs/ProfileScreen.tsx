@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { userProfile } from '@/constants/DummyData';
 import { Settings, Bookmark, Grid } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,15 @@ import { useRouter } from 'expo-router';
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { user: authUser, logout } = useAuth();
+
+  // Prefer real user from auth context; fall back to dummy data
+  const displayName = authUser?.name || authUser?.username || userProfile.name;
+  const displayUsername = authUser?.username || userProfile.username;
+  const displayBio = authUser?.bio || userProfile.bio;
+  const displayImage = authUser?.profileImage || userProfile.profileImage;
+  const displayFollowers = authUser?.followers ?? userProfile.followers;
+  const displayFollowing = authUser?.following ?? userProfile.following;
 
   const handleEditProfile = () => {
     router.push('/state/edit-profile');
@@ -32,8 +42,8 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', 'Logged out successfully');
+          onPress: async () => {
+            await logout();
             router.replace('/auth/login');
           },
         },
@@ -47,7 +57,7 @@ export default function ProfileScreen() {
     >
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.username, { color: colors.text }]}>
-          {userProfile.username}
+          {displayUsername}
         </Text>
         <TouchableOpacity onPress={handleLogout}>
           <Settings size={24} color={colors.text} />
@@ -58,7 +68,7 @@ export default function ProfileScreen() {
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
             <Image
-              source={{ uri: userProfile.profileImage }}
+              source={{ uri: displayImage }}
               style={styles.profileImage}
             />
             <View style={styles.stats}>
@@ -72,7 +82,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statNumber, { color: colors.text }]}>
-                  {userProfile.followers.toLocaleString()}
+                  {displayFollowers.toLocaleString()}
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Followers
@@ -80,7 +90,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statNumber, { color: colors.text }]}>
-                  {userProfile.following}
+                  {displayFollowing}
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Following
@@ -91,10 +101,10 @@ export default function ProfileScreen() {
 
           <View style={styles.profileInfo}>
             <Text style={[styles.name, { color: colors.text }]}>
-              {userProfile.name}
+              {displayName}
             </Text>
             <Text style={[styles.bio, { color: colors.text }]}>
-              {userProfile.bio}
+              {displayBio}
             </Text>
           </View>
 
