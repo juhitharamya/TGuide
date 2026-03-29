@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Post, Comment, User
+from database import db, Post, Comment, User
 from datetime import datetime, timezone
 
 posts_bp = Blueprint('posts', __name__, url_prefix='/api/posts')

@@ -1,10 +1,19 @@
+import os
+import sys
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
 from flasgger import Swagger
+
+# Make project-root packages (e.g., database/) importable when running backend/app.py.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from config import Config
-from models import db
+from database import db
 
 # Import blueprints
 from routes.auth import auth_bp

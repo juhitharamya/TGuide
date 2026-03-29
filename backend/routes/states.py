@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from models import State
+from database import State
 
 states_bp = Blueprint('states', __name__, url_prefix='/api/states')
 

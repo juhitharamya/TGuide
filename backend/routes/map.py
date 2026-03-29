@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 import requests
-from models import TouristSpot, MapRestaurant
+from database import TouristSpot, MapRestaurant
 
 map_bp = Blueprint('map', __name__, url_prefix='/api/map')
 
