@@ -70,7 +70,6 @@ TGuide/
 │   ├── app.py                      # App factory, Swagger config, health check
 │   ├── config.py                   # Environment-based configuration
 │   ├── models.py                   # SQLAlchemy models (8 tables)
-│   ├── seed_data.py                # Database seeder (states, posts, users, …)
 │   ├── requirements.txt            # Python dependencies
 │   ├── .env                        # Environment variables (API keys, secrets)
 │   └── routes/
@@ -103,8 +102,7 @@ TGuide/
     ├── services/api.ts             # Axios config & API calls
     ├── contexts/ThemeContext.tsx    # Dark / light mode provider
     ├── constants/
-    │   ├── Colors.ts               # Theme colour tokens
-    │   └── DummyData.ts            # Fallback / offline data
+    │   └── Colors.ts               # Theme colour tokens
     ├── package.json
     └── tsconfig.json
 ```

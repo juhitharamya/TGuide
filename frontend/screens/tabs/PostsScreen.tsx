@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,23 +9,70 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { PostCard } from '@/components/PostCard';
-import { posts as initialPosts } from '@/constants/DummyData';
 import { Plus, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { postsAPI } from '@/services/api';
+
+type Post = {
+  id: string;
+  username: string;
+  userImage: string;
+  postImage: string;
+  caption: string;
+  location: string;
+  likes: number;
+  comments: number;
+  timestamp: string;
+  isLiked: boolean;
+};
 
 export default function PostsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
 
-  const handleLike = (postId: string) => {
-    console.log('Liked post:', postId);
+  const loadPosts = useCallback(async () => {
+    setLoadingPosts(true);
+    try {
+      const response = await postsAPI.getPosts();
+      setPosts(Array.isArray(response) ? response : []);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setPosts([]);
+      setError('Unable to load posts.');
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
+
+  const handleLike = async (postId: string) => {
+    try {
+      const result = await postsAPI.likePost(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, likes: result.likes ?? p.likes, isLiked: result.isLiked ?? p.isLiked }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update like status.');
+    }
   };
 
   const handleComment = (postId: string) => {
@@ -41,11 +88,24 @@ export default function PostsScreen() {
     router.push('/state/create-post');
   };
 
-  const submitComment = () => {
-    if (commentText.trim()) {
+  const submitComment = async () => {
+    if (!commentText.trim() || !selectedPostId) {
+      return;
+    }
+
+    try {
+      await postsAPI.commentOnPost(selectedPostId, commentText.trim());
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === selectedPostId ? { ...p, comments: p.comments + 1 } : p
+        )
+      );
       Alert.alert('Success', 'Comment posted!');
       setCommentText('');
       setCommentModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to post comment.');
     }
   };
 
@@ -57,6 +117,26 @@ export default function PostsScreen() {
         <Text style={[styles.title, { color: colors.text }]}>TravelSphere</Text>
       </View>
 
+      {loadingPosts && (
+        <View style={styles.statusContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.statusText, { color: colors.textSecondary }]}>Loading posts...</Text>
+        </View>
+      )}
+
+      {!loadingPosts && error && (
+        <View style={styles.statusContainer}>
+          <Text style={[styles.statusText, { color: colors.text }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={loadPosts}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!loadingPosts && !error && (
       <FlatList
         data={posts}
         renderItem={({ item }) => (
@@ -77,7 +157,13 @@ export default function PostsScreen() {
         )}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.statusContainer}>
+            <Text style={[styles.statusText, { color: colors.textSecondary }]}>No posts yet. Be the first to share!</Text>
+          </View>
+        }
       />
+      )}
 
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
@@ -210,6 +296,27 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  statusContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  statusText: {
+    marginTop: 10,
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  retryButton: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });

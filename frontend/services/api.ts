@@ -1,12 +1,30 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-// Web always uses localhost. For Expo Go on a physical phone,
-// set EXPO_PUBLIC_API_URL to your PC's LAN IP (e.g. http://192.168.x.x:8000/api)
-const API_BASE_URL =
-  (Platform.OS === 'web'
-    ? 'http://localhost:8000/api'
-    : process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.25:8000/api');
+// Web uses localhost. On Android emulator, localhost must be mapped to 10.0.2.2.
+const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+const resolveApiBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    return envApiUrl || 'http://localhost:8000/api';
+  }
+
+  const fallback = Platform.OS === 'android'
+    ? 'http://10.0.2.2:8000/api'
+    : 'http://localhost:8000/api';
+
+  const configured = envApiUrl || fallback;
+
+  if (Platform.OS === 'android') {
+    return configured
+      .replace('://localhost', '://10.0.2.2')
+      .replace('://127.0.0.1', '://10.0.2.2');
+  }
+
+  return configured;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 console.log('[TGuide] API URL:', API_BASE_URL);
 

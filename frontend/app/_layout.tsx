@@ -16,10 +16,7 @@ export default function RootLayout() {
                     <Stack.Screen name="auth/login" />
                     <Stack.Screen name="auth/signup" />
                     <Stack.Screen name="auth/forgot-password" />
-                    <Stack.Screen name="state/[id]" />
-                    <Stack.Screen name="state/create-post" />
-                    <Stack.Screen name="state/edit-profile" />
-                    <Stack.Screen name="+not-found" />
+                    <Stack.Screen name="state" />
                 </Stack>
                 <StatusBar style="auto" />
             </ThemeProvider>

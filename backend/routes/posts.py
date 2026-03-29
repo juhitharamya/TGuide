@@ -49,12 +49,6 @@ def create_post():
     location = request.form.get('location', '') or (request.get_json() or {}).get('location', '')
     image = request.form.get('image', '') or (request.get_json() or {}).get('image', '')
 
-    if 'image' in request.files:
-        image = 'https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800'
-
-    if not image:
-        image = 'https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800'
-
     user = User.query.first()
 
     post = Post(

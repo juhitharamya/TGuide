@@ -1,17 +1,59 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
+    ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { touristSpots, restaurants } from '@/constants/DummyData';
 import { MapPin, Utensils } from 'lucide-react-native';
+import { mapAPI } from '@/services/api';
+
+type TouristSpot = {
+    id: string;
+    name: string;
+    description?: string;
+};
+
+type Restaurant = {
+    id: string;
+    name: string;
+    cuisine?: string;
+    rating?: number;
+};
 
 export default function MapScreen() {
     const { colors } = useTheme();
+    const [touristSpots, setTouristSpots] = useState<TouristSpot[]>([]);
+    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadMapData = async () => {
+            setLoading(true);
+            try {
+                const [spotsResponse, restaurantsResponse] = await Promise.all([
+                    mapAPI.getTouristSpots(20.5937, 78.9629, 50000),
+                    mapAPI.getRestaurants(20.5937, 78.9629, 50000),
+                ]);
+
+                setTouristSpots(Array.isArray(spotsResponse) ? spotsResponse : []);
+                setRestaurants(Array.isArray(restaurantsResponse) ? restaurantsResponse : []);
+                setError(null);
+            } catch (err) {
+                console.error(err);
+                setTouristSpots([]);
+                setRestaurants([]);
+                setError('Unable to load map data.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadMapData();
+    }, []);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -26,6 +68,19 @@ export default function MapScreen() {
             </View>
 
             <ScrollView style={styles.listContent}>
+                {loading && (
+                    <View style={styles.loadingSection}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading map points...</Text>
+                    </View>
+                )}
+
+                {!loading && error && (
+                    <View style={[styles.errorBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+                    </View>
+                )}
+
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                     📍 Tourist Spots
                 </Text>
@@ -50,6 +105,10 @@ export default function MapScreen() {
                         </View>
                     </View>
                 ))}
+
+                {!loading && touristSpots.length === 0 && (
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tourist spots available.</Text>
+                )}
 
                 <Text
                     style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}
@@ -80,6 +139,10 @@ export default function MapScreen() {
                         </View>
                     </View>
                 ))}
+
+                {!loading && restaurants.length === 0 && (
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No restaurants available.</Text>
+                )}
             </ScrollView>
         </View>
     );
@@ -116,6 +179,27 @@ const styles = StyleSheet.create({
     cardContent: { flex: 1 },
     cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
     cardDesc: { fontSize: 13 },
+    loadingSection: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    loadingText: {
+        marginTop: 10,
+    },
+    errorBox: {
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 16,
+    },
+    errorText: {
+        textAlign: 'center',
+        fontWeight: '600',
+    },
+    emptyText: {
+        marginBottom: 16,
+    },
     ratingBadge: {
         paddingHorizontal: 10,
         paddingVertical: 4,

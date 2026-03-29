@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,45 @@ import {
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CustomButton } from '@/components/CustomButton';
-import { userProfile } from '@/constants/DummyData';
 import { ArrowLeft, Camera } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { profileAPI } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const [name, setName] = useState(userProfile.name);
-  const [username, setUsername] = useState(userProfile.username);
-  const [bio, setBio] = useState(userProfile.bio);
-  const [profileImage, setProfileImage] = useState(userProfile.profileImage);
+  const { user: authUser } = useAuth();
+  const [name, setName] = useState(authUser?.name || authUser?.username || '');
+  const [username, setUsername] = useState(authUser?.username || '');
+  const [bio, setBio] = useState(authUser?.bio || '');
+  const [profileImage, setProfileImage] = useState(authUser?.profileImage || '');
   const [loading, setLoading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!authUser?.id) {
+        setLoadingProfile(false);
+        return;
+      }
+
+      setLoadingProfile(true);
+      try {
+        const profile = await profileAPI.getProfile(authUser.id);
+        setName(profile.name || profile.username || '');
+        setUsername(profile.username || '');
+        setBio(profile.bio || '');
+        setProfileImage(profile.profileImage || authUser.profileImage || '');
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [authUser]);
 
   const handleChangePhoto = () => {
     Alert.alert('Info', 'In production, this would open image picker');
@@ -38,13 +64,18 @@ export default function EditProfileScreen() {
       Alert.alert('Error', 'Please enter a username');
       return;
     }
+    if (!authUser?.id) {
+      Alert.alert('Error', 'Please login again and try updating your profile.');
+      return;
+    }
 
     setLoading(true);
     try {
-      await profileAPI.updateProfile(userProfile.id, {
+      await profileAPI.updateProfile(authUser.id, {
         name,
         username,
         bio,
+        profileImage,
       });
       Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() },
@@ -70,12 +101,26 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        {loadingProfile ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading profile...</Text>
+          </View>
+        ) : (
+          <>
         <View style={styles.photoSection}>
           <View style={styles.photoContainer}>
-            <Image
-              source={{ uri: profileImage }}
-              style={styles.profileImage}
-            />
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={[styles.profileImage, styles.profilePlaceholder, { backgroundColor: colors.border }]}>
+                <Text style={[styles.profileInitial, { color: colors.text }]}>
+                  {(name || username || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <TouchableOpacity
               style={[
                 styles.photoButton,
@@ -163,6 +208,8 @@ export default function EditProfileScreen() {
             style={styles.saveButton}
           />
         </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -200,6 +247,14 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+  },
+  profilePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileInitial: {
+    fontSize: 32,
+    fontWeight: '700',
   },
   photoButton: {
     position: 'absolute',
@@ -251,5 +306,12 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 8,
+  },
+  loadingContainer: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
   },
 });

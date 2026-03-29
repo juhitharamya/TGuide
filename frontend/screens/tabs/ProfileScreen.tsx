@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,28 +9,77 @@ import {
   FlatList,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { userProfile } from '@/constants/DummyData';
 import { Settings, Bookmark, Grid } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { profileAPI } from '@/services/api';
+
+type SavedPlan = {
+  id: string;
+  destination: string;
+  duration: string;
+  budget: string;
+};
+
+type ProfileData = {
+  id: string;
+  username: string;
+  name: string;
+  bio: string;
+  profileImage: string;
+  followers: number;
+  following: number;
+  posts: string[];
+  savedPlans: SavedPlan[];
+};
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user: authUser, logout } = useAuth();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Prefer real user from auth context; fall back to dummy data
-  const displayName = authUser?.name || authUser?.username || userProfile.name;
-  const displayUsername = authUser?.username || userProfile.username;
-  const displayBio = authUser?.bio || userProfile.bio;
-  const displayImage = authUser?.profileImage || userProfile.profileImage;
-  const displayFollowers = authUser?.followers ?? userProfile.followers;
-  const displayFollowing = authUser?.following ?? userProfile.following;
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!authUser?.id) {
+        setLoadingProfile(false);
+        return;
+      }
+
+      setLoadingProfile(true);
+      try {
+        const response = await profileAPI.getProfile(authUser.id);
+        setProfile(response);
+      } catch (err) {
+        console.error(err);
+        setProfile(null);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [authUser]);
+
+  const displayName = profile?.name || authUser?.name || authUser?.username || 'Traveler';
+  const displayUsername = profile?.username || authUser?.username || 'user';
+  const displayBio = profile?.bio || authUser?.bio || 'No bio added yet.';
+  const displayImage = profile?.profileImage || authUser?.profileImage || '';
+  const displayFollowers = profile?.followers ?? authUser?.followers ?? 0;
+  const displayFollowing = profile?.following ?? authUser?.following ?? 0;
+  const displayPosts = profile?.posts || [];
+  const displaySavedPlans = profile?.savedPlans || [];
 
   const handleEditProfile = () => {
     router.push('/state/edit-profile');
+  };
+
+  const handleCreatePost = () => {
+    router.push('/state/create-post');
   };
 
   const handleLogout = () => {
@@ -67,14 +116,22 @@ export default function ProfileScreen() {
       <ScrollView>
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
-            <Image
-              source={{ uri: displayImage }}
-              style={styles.profileImage}
-            />
+            {displayImage ? (
+              <Image
+                source={{ uri: displayImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={[styles.profileImage, styles.profileImagePlaceholder, { backgroundColor: colors.border }]}>
+                <Text style={[styles.profileImageInitial, { color: colors.text }]}>
+                  {(displayName || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View style={styles.stats}>
               <View style={styles.statItem}>
                 <Text style={[styles.statNumber, { color: colors.text }]}>
-                  {userProfile.posts.length}
+                  {displayPosts.length}
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Posts
@@ -118,6 +175,15 @@ export default function ProfileScreen() {
             >
               <Text style={styles.actionButtonText}>Edit Profile</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.secondaryActionButton,
+                { borderColor: colors.border, backgroundColor: colors.card },
+              ]}
+              onPress={handleCreatePost}
+            >
+              <Text style={[styles.secondaryActionButtonText, { color: colors.text }]}>Create Post</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -131,18 +197,28 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.postsGrid}>
-          {userProfile.posts.map((post, index) => (
+          {displayPosts.map((post, index) => (
             <TouchableOpacity key={index} style={styles.gridItem}>
               <Image source={{ uri: post }} style={styles.gridImage} />
             </TouchableOpacity>
           ))}
+          {!loadingProfile && displayPosts.length === 0 && (
+            <View style={styles.emptySection}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No posts yet.</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.savedSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Saved Travel Plans
           </Text>
-          {userProfile.savedPlans.map((plan) => (
+          {loadingProfile && (
+            <View style={styles.loadingSection}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          )}
+          {!loadingProfile && displaySavedPlans.map((plan) => (
             <View
               key={plan.id}
               style={[
@@ -173,6 +249,9 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           ))}
+          {!loadingProfile && displaySavedPlans.length === 0 && (
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No saved plans yet.</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -208,6 +287,14 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
   },
+  profileImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileImageInitial: {
+    fontSize: 30,
+    fontWeight: '700',
+  },
   stats: {
     flex: 1,
     flexDirection: 'row',
@@ -239,6 +326,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    gap: 10,
   },
   actionButton: {
     flex: 1,
@@ -248,6 +336,17 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  secondaryActionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  secondaryActionButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
@@ -316,5 +415,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  loadingSection: {
+    paddingVertical: 10,
+  },
+  emptySection: {
+    width: '100%',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
   },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,24 +6,87 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { indianStates } from '@/constants/DummyData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, MapPin, Calendar, DollarSign } from 'lucide-react-native';
+import { statesAPI } from '@/services/api';
+
+type StateDetails = {
+  id: string;
+  name: string;
+  image: string;
+  culture: string;
+  festivals: string;
+  budget: string;
+  bestTime: string;
+  touristAttractions: Array<{
+    name: string;
+    description: string;
+  }>;
+  restaurants: Array<{
+    name: string;
+    cuisine: string;
+    rating: number;
+  }>;
+};
 
 export default function StateDetailsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [state, setState] = useState<StateDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const state = indianStates.find((s) => s.id === id);
+  const stateId = Array.isArray(id) ? id[0] : id;
 
-  if (!state) {
+  useEffect(() => {
+    const loadState = async () => {
+      if (!stateId) {
+        setError('State not found');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await statesAPI.getStateDetails(stateId);
+        setState(response);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setState(null);
+        setError('Unable to load state details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadState();
+  }, [stateId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.errorText, { color: colors.textSecondary, marginTop: 12 }]}>Loading state details...</Text>
+      </View>
+    );
+  }
+
+  if (!state || error) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={styles.missingBackButton}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color={colors.text} />
+        </TouchableOpacity>
         <Text style={[styles.errorText, { color: colors.text }]}>
-          State not found
+          {error || 'State not found'}
         </Text>
       </View>
     );
@@ -292,5 +355,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     marginTop: 100,
+  },
+  missingBackButton: {
+    position: 'absolute',
+    top: 52,
+    left: 16,
+    zIndex: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
 });

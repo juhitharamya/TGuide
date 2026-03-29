@@ -6,35 +6,53 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
+  Image,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CustomButton } from '@/components/CustomButton';
 import { ArrowLeft, Camera, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { postsAPI } from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function CreatePostScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSelectImage = () => {
-    const dummyImage =
-      'https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800';
-    setSelectedImage(dummyImage);
-    Alert.alert('Info', 'In production, this would open image picker');
+  const handleSelectImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission needed', 'Please allow media library access to select an image.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 5],
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (result.canceled || !result.assets?.length) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const selectedUri = asset.base64
+      ? `data:${mimeType};base64,${asset.base64}`
+      : asset.uri;
+
+    setImageUri(selectedUri);
   };
 
   const handleSubmit = async () => {
-    if (!selectedImage) {
-      Alert.alert('Error', 'Please select an image');
-      return;
-    }
     if (!caption.trim()) {
       Alert.alert('Error', 'Please enter a caption');
       return;
@@ -49,6 +67,9 @@ export default function CreatePostScreen() {
       const formData = new FormData();
       formData.append('caption', caption);
       formData.append('location', location);
+      if (imageUri) {
+        formData.append('image', imageUri);
+      }
 
       await postsAPI.createPost(formData);
       Alert.alert('Success', 'Post created successfully!', [
@@ -83,14 +104,12 @@ export default function CreatePostScreen() {
           onPress={handleSelectImage}
           activeOpacity={0.7}
         >
-          {selectedImage ? (
-            <Image source={{ uri: selectedImage }} style={styles.selectedImage} />
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Camera size={48} color={colors.textSecondary} />
-              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                Tap to select image
-              </Text>
+              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>Tap to add image</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -186,14 +205,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placeholderText: {
-    marginTop: 12,
-    fontSize: 16,
-  },
-  selectedImage: {
+  previewImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  placeholderText: {
+    marginTop: 12,
+    fontSize: 16,
   },
   form: {
     padding: 16,

@@ -107,16 +107,15 @@ project/
 │   └── api.ts                   # Axios configuration and API calls
 ├── contexts/                     # React contexts
 │   └── ThemeContext.tsx         # Theme provider (dark/light mode)
-├── constants/                    # Constants and dummy data
-│   ├── Colors.ts
-│   └── DummyData.ts
+├── constants/                    # App constants
+│   └── Colors.ts
 └── hooks/
     └── useFrameworkReady.ts
 ```
 
 ## API Integration
 
-The app is structured to integrate with a FastAPI backend. All API calls are centralized in `services/api.ts` with the following endpoints:
+The app is integrated with a Flask backend. All API calls are centralized in `services/api.ts` with the following endpoints:
 
 ### Authentication
 - `POST /api/auth/login` - User login
@@ -165,18 +164,9 @@ const API_BASE_URL = 'http://localhost:8000/api';
 - Stack navigation for detailed views
 - Deep linking support
 
-### Dummy Data
-All screens use dummy data located in `constants/DummyData.ts` including:
-- Indian states with details
-- Social media posts
-- User profile
-- Tourist spots
-- Restaurants
-- Chat suggestions
-
 ## Development Notes
 
-1. **API Integration**: Replace dummy data with actual API calls once backend is ready
+1. **API Integration**: Ensure `services/api.ts` points to your running backend URL
 2. **Image Picker**: Implement actual image picker for profile photo and post creation
 3. **Authentication**: Add token storage and management
 4. **Maps**: Add actual user location tracking
@@ -236,8 +226,7 @@ TGuide
     │   └── StateCard.tsx
     │
     ├── constants
-    │   ├── Colors.ts
-    │   └── DummyData.ts
+    │   └── Colors.ts
     │
     ├── contexts
     │   └── ThemeContext.tsx

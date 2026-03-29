@@ -5,7 +5,6 @@ from flask_bcrypt import Bcrypt
 from flasgger import Swagger
 from config import Config
 from models import db
-from seed_data import seed_database
 
 # Import blueprints
 from routes.auth import auth_bp
@@ -93,10 +92,9 @@ def create_app():
         """
         return {'status': 'ok', 'message': 'TGuide API is running'}, 200
 
-    # Create tables and seed data
+    # Create tables
     with app.app_context():
         db.create_all()
-        seed_database(app)
 
     return app
 

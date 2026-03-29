@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Home, Image, MessageCircle, Map, User } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDeviceType } from '@/hooks/useDeviceType';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { isMobile } = useDeviceType();
 
   return (
     <Tabs
@@ -12,6 +14,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.tabIconSelected,
         tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
+          display: isMobile ? 'flex' : 'none',
           backgroundColor: colors.card,
           borderTopColor: colors.border,
           borderTopWidth: 1,

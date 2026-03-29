@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,12 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useTheme } from '@/contexts/ThemeContext';
-import { touristSpots, restaurants } from '@/constants/DummyData';
 import { MapPin, Utensils, X, Star } from 'lucide-react-native';
+import { mapAPI } from '@/services/api';
 
 type MarkerData = {
   id: string;
@@ -26,6 +27,35 @@ export default function MapScreen() {
   const { colors } = useTheme();
   const [selectedMarker, setSelectedMarker] = useState<MarkerData | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [touristSpots, setTouristSpots] = useState<any[]>([]);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadMapData = async () => {
+      setLoading(true);
+      try {
+        const [spotsResponse, restaurantsResponse] = await Promise.all([
+          mapAPI.getTouristSpots(20.5937, 78.9629, 50000),
+          mapAPI.getRestaurants(20.5937, 78.9629, 50000),
+        ]);
+
+        setTouristSpots(Array.isArray(spotsResponse) ? spotsResponse : []);
+        setRestaurants(Array.isArray(restaurantsResponse) ? restaurantsResponse : []);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setTouristSpots([]);
+        setRestaurants([]);
+        setError('Unable to load map data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMapData();
+  }, []);
 
   const initialRegion = {
     latitude: 20.5937,
@@ -110,6 +140,19 @@ export default function MapScreen() {
           </Marker>
         ))}
       </MapView>
+
+      {loading && (
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.overlayText}>Loading map points...</Text>
+        </View>
+      )}
+
+      {!loading && error && (
+        <View style={[styles.errorBanner, { backgroundColor: colors.card }]}> 
+          <Text style={[styles.errorBannerText, { color: colors.text }]}>{error}</Text>
+        </View>
+      )}
 
       <View style={styles.legend}>
         <View style={styles.legendItem}>
@@ -370,6 +413,30 @@ const styles = StyleSheet.create({
   directionsButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayText: {
+    marginTop: 10,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  errorBanner: {
+    position: 'absolute',
+    top: 92,
+    left: 16,
+    right: 16,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  errorBannerText: {
+    textAlign: 'center',
+    fontSize: 13,
     fontWeight: '600',
   },
 });
